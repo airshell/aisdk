@@ -7,8 +7,11 @@ use Laravel\Ai\Responses\Data\BooleanAnswer;
 use Laravel\Ai\Responses\Data\FinishReason;
 use Laravel\Ai\Responses\Data\Meta;
 use Laravel\Ai\Responses\Data\TextUsage;
+use Laravel\Ai\Responses\Data\TranscriptionSegment;
+use Laravel\Ai\Responses\Data\TranscriptionUsage;
 use Laravel\Ai\Responses\Data\Usage;
 use Laravel\Ai\Responses\EmbeddingsResponse;
+use Laravel\Ai\Responses\TranscriptionResponse;
 use Tests\Fixtures\Responses\SubclassedStep;
 use Tests\Fixtures\Responses\SubclassedTextResponse;
 
@@ -58,5 +61,27 @@ test('serialization preserves embeddings and drops the raw response', function (
         ->and($restored->usage->inputTokens)->toBe(10)
         ->and($restored->meta->provider)->toBe('openai')
         ->and($restored->meta->model)->toBe('text-embedding-3-small')
+        ->and($restored->raw)->toBeNull();
+});
+
+test('serialization preserves transcription data and drops the raw response', function (): void {
+    $response = (new TranscriptionResponse(
+        'Hello, world!',
+        collect([new TranscriptionSegment('Hello, world!', 'Speaker 1', 1.5, 3.25)]),
+        new TranscriptionUsage(10, 4, audioSeconds: 3.25),
+        new Meta('openai', 'gpt-4o-transcribe'),
+    ))->withRawResponse(new Response(new Psr7Response(200, [], '{}')));
+
+    $restored = unserialize(serialize($response));
+
+    expect($restored->text)->toBe('Hello, world!')
+        ->and($restored->segments->toArray())->toBe([
+            ['text' => 'Hello, world!', 'speaker' => 'Speaker 1', 'start_seconds' => 1.5, 'end_seconds' => 3.25],
+        ])
+        ->and($restored->usage->inputTokens)->toBe(10)
+        ->and($restored->usage->outputTokens)->toBe(4)
+        ->and($restored->usage->audioSeconds)->toBe(3.25)
+        ->and($restored->meta->provider)->toBe('openai')
+        ->and($restored->meta->model)->toBe('gpt-4o-transcribe')
         ->and($restored->raw)->toBeNull();
 });

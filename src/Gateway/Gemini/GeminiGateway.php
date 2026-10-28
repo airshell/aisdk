@@ -340,12 +340,12 @@ class GeminiGateway implements Gateway, StepTextGateway
 
         $steps = $data['steps'] ?? [];
 
-        return new TranscriptionResponse(
+        return (new TranscriptionResponse(
             trim($this->extractText($steps)),
             $this->speakerSegments($steps),
             TranscriptionUsage::from($this->extractUsage($data)),
             new Meta($provider->name(), $model),
-        );
+        ))->withRawResponse($response);
     }
 
     /**
@@ -482,12 +482,12 @@ class GeminiGateway implements Gateway, StepTextGateway
             $segments = new Collection;
         }
 
-        return new TranscriptionResponse(
+        return (new TranscriptionResponse(
             trim((string) $text),
             $segments,
             TranscriptionUsage::from($this->extractUsage($payload)),
             new Meta($provider->name(), $model),
-        );
+        ))->withRawResponse($response);
     }
 
     /**

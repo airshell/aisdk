@@ -152,6 +152,14 @@ test('transcription response text is correctly parsed', function (): void {
         ->and($response->meta->model)->toBe('openai/gpt-transcribe');
 });
 
+test('the raw transcription response exposes provider specific usage', function (): void {
+    Http::fake(['*' => fakeOpenRouterTranscriptionResponse()]);
+
+    $response = Transcription::fromBase64(base64_encode('fake-audio'), 'audio/mp3')->generate(provider: 'openrouter');
+
+    expect($response->raw->json('usage.cost'))->toBe(0.000100);
+});
+
 test('transcription usage is correctly parsed', function (): void {
     Http::fake(['*' => Http::response([
         'text' => 'Hello',

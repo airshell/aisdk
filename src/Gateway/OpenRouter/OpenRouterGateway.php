@@ -271,7 +271,7 @@ class OpenRouterGateway implements Gateway, RerankingGateway, StepTextGateway
 
         $data = $response->json();
 
-        return new TranscriptionResponse(
+        return (new TranscriptionResponse(
             $data['text'] ?? '',
             collect(),
             new TranscriptionUsage(
@@ -280,7 +280,7 @@ class OpenRouterGateway implements Gateway, RerankingGateway, StepTextGateway
                 audioSeconds: Arr::get($data, 'usage.seconds'),
             ),
             new Meta($provider->name(), $model),
-        );
+        ))->withRawResponse($response);
     }
 
     /**

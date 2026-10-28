@@ -228,7 +228,7 @@ class OpenAiGateway implements Gateway, StepTextGateway
 
         $data = $response->json();
 
-        return new TranscriptionResponse(
+        return (new TranscriptionResponse(
             $data['text'] ?? '',
             collect($data['segments'] ?? [])->map(fn (array $segment): TranscriptionSegment => new TranscriptionSegment(
                 $segment['text'] ?? '',
@@ -242,7 +242,7 @@ class OpenAiGateway implements Gateway, StepTextGateway
                 audioSeconds: Arr::get($data, 'usage.seconds') ?? Arr::get($data, 'duration'),
             ),
             new Meta($provider->name(), $model),
-        );
+        ))->withRawResponse($response);
     }
 
     /**

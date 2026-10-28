@@ -9,6 +9,8 @@ use Laravel\Ai\Responses\Data\TranscriptionUsage;
 
 class TranscriptionResponse implements \Stringable
 {
+    use Concerns\HasRawResponse;
+
     public string $text;
 
     /** @var Collection<int, TranscriptionSegment> */

@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Laravel\Ai\Exceptions\ProviderOverloadedException;
 use Laravel\Ai\Exceptions\RateLimitedException;
@@ -89,6 +90,16 @@ test('transcription usage is correctly parsed', function (): void {
 
     expect($response->usage->inputTokens)->toBe(100)
         ->and($response->usage->outputTokens)->toBe(50);
+});
+
+test('the raw http response is exposed on the transcription response', function (): void {
+    Http::fake(['*' => fakeOpenAiTranscriptionResponse()]);
+
+    $response = Transcription::fromBase64(base64_encode('fake-audio'), 'audio/mp3')
+        ->generate(provider: 'openai');
+
+    expect($response->raw)->toBeInstanceOf(Response::class)
+        ->and($response->raw->json('text'))->toBe('Hello, world!');
 });
 
 test('transcription sends language when provided', function (): void {

@@ -85,14 +85,14 @@ class ElevenLabsGateway implements AudioGateway, TranscriptionGateway
                 'diarize' => $diarize ? 'true' : 'false',
             ])))->throw());
 
-        $response = $response->json();
+        $data = $response->json();
 
         $segments = $diarize
-            ? ($response['words'] ?? [])
+            ? ($data['words'] ?? [])
             : [];
 
-        return new TranscriptionResponse(
-            $response['text'],
+        return (new TranscriptionResponse(
+            $data['text'],
             (new Collection($segments))->map(function (array $segment) {
                 if ($segment['type'] !== 'word') {
                     return;
@@ -105,9 +105,9 @@ class ElevenLabsGateway implements AudioGateway, TranscriptionGateway
                     $segment['end'],
                 );
             })->filter()->values(),
-            new TranscriptionUsage(audioSeconds: $response['audio_duration_secs'] ?? null),
+            new TranscriptionUsage(audioSeconds: $data['audio_duration_secs'] ?? null),
             new Meta($provider->name(), $model),
-        );
+        ))->withRawResponse($response);
     }
 
     /**
