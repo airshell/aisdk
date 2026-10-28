@@ -92,11 +92,11 @@ class JinaGateway implements EmbeddingGateway, RerankingGateway
             score: $result['relevance_score'],
         ))->all();
 
-        return new RerankingResponse(
+        return (new RerankingResponse(
             $results,
             new RerankingUsage($data['usage']['total_tokens'] ?? 0),
             new Meta($provider->name(), $model),
-        );
+        ))->withRawResponse($response);
     }
 
     /**

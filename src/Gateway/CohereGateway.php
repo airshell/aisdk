@@ -169,14 +169,14 @@ class CohereGateway implements EmbeddingGateway, RerankingGateway, StepTextGatew
             score: $result['relevance_score'],
         ))->all();
 
-        return new RerankingResponse(
+        return (new RerankingResponse(
             $results,
             new RerankingUsage(
                 inputTokens: $data['meta']['billed_units']['input_tokens'] ?? 0,
                 searchUnits: $data['meta']['billed_units']['search_units'] ?? null,
             ),
             new Meta($provider->name(), $model),
-        );
+        ))->withRawResponse($response);
     }
 
     /**

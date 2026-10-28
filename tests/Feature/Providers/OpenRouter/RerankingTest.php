@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Http\Client\Request;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Laravel\Ai\Exceptions\AiException;
 use Laravel\Ai\Exceptions\RateLimitedException;
@@ -98,11 +99,13 @@ function fakeOpenRouterRerankingResponse()
 test('reranking response reports the total tokens and search units', function (): void {
     Http::fake(['*' => Http::response([
         'results' => [['index' => 0, 'relevance_score' => 0.95]],
-        'usage' => ['total_tokens' => 320, 'search_units' => 1],
+        'usage' => ['total_tokens' => 320, 'search_units' => 1, 'cost' => 0.001],
     ])]);
 
     $response = Reranking::of(['Doc A'])->rerank('query', provider: 'openrouter', model: 'cohere/rerank-v3.5');
 
     expect($response->usage->inputTokens)->toBe(320)
-        ->and($response->usage->searchUnits)->toBe(1.0);
+        ->and($response->usage->searchUnits)->toBe(1.0)
+        ->and($response->raw)->toBeInstanceOf(Response::class)
+        ->and($response->raw->json('usage.cost'))->toBe(0.001);
 });

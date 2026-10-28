@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Laravel\Ai\Exceptions\ProviderOverloadedException;
 use Laravel\Ai\Exceptions\RateLimitedException;
@@ -54,7 +55,9 @@ test('reranking response is correctly parsed into RankedDocuments', function ():
         ->and($response->first()->document)->toBe('Laravel is a PHP framework')
         ->and($response->first()->score)->toBe(0.95)
         ->and($response->meta->provider)->toBe('voyageai')
-        ->and($response->meta->model)->toBe('rerank-2.5-lite');
+        ->and($response->meta->model)->toBe('rerank-2.5-lite')
+        ->and($response->raw)->toBeInstanceOf(Response::class)
+        ->and($response->raw->json('usage.total_tokens'))->toBe(25);
 });
 
 test('reranking request sends bearer token', function (): void {

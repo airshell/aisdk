@@ -368,13 +368,13 @@ class OpenRouterGateway implements Gateway, RerankingGateway, StepTextGateway
             score: $result['relevance_score'],
         ))->all();
 
-        return new RerankingResponse(
+        return (new RerankingResponse(
             $results,
             new RerankingUsage(
                 inputTokens: $data['usage']['total_tokens'] ?? 0,
                 searchUnits: $data['usage']['search_units'] ?? null,
             ),
             new Meta($provider->name(), $model),
-        );
+        ))->withRawResponse($response);
     }
 }

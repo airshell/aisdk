@@ -14,6 +14,8 @@ use Traversable;
 
 class RerankingResponse implements Arrayable, Countable, IteratorAggregate, JsonSerializable
 {
+    use Concerns\HasRawResponse;
+
     /**
      * Create a new reranking response instance.
      *

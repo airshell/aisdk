@@ -3,6 +3,7 @@
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Laravel\Ai\Ai;
 use Laravel\Ai\Exceptions\ProviderOverloadedException;
@@ -58,7 +59,9 @@ test('reranking response is correctly parsed into RankedDocuments', function ():
         ->and($response->first()->document)->toBe('Laravel is a PHP framework')
         ->and($response->first()->score)->toBe(0.95)
         ->and($response->meta->provider)->toBe('cohere')
-        ->and($response->meta->model)->toBe('rerank-v3.5');
+        ->and($response->meta->model)->toBe('rerank-v3.5')
+        ->and($response->raw)->toBeInstanceOf(Response::class)
+        ->and($response->raw->json('results.0.relevance_score'))->toBe(0.95);
 });
 
 test('reranking request sends bearer token', function (): void {

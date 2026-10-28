@@ -8,12 +8,15 @@ use Laravel\Ai\Responses\Data\FinishReason;
 use Laravel\Ai\Responses\Data\GeneratedImage;
 use Laravel\Ai\Responses\Data\ImageUsage;
 use Laravel\Ai\Responses\Data\Meta;
+use Laravel\Ai\Responses\Data\RankedDocument;
+use Laravel\Ai\Responses\Data\RerankingUsage;
 use Laravel\Ai\Responses\Data\TextUsage;
 use Laravel\Ai\Responses\Data\TranscriptionSegment;
 use Laravel\Ai\Responses\Data\TranscriptionUsage;
 use Laravel\Ai\Responses\Data\Usage;
 use Laravel\Ai\Responses\EmbeddingsResponse;
 use Laravel\Ai\Responses\ImageResponse;
+use Laravel\Ai\Responses\RerankingResponse;
 use Laravel\Ai\Responses\TranscriptionResponse;
 use Tests\Fixtures\Responses\SubclassedStep;
 use Tests\Fixtures\Responses\SubclassedTextResponse;
@@ -106,5 +109,21 @@ test('serialization preserves image data and drops the raw response', function (
         ->and($restored->usage->imageOutputTokens)->toBe(1000)
         ->and($restored->meta->provider)->toBe('openai')
         ->and($restored->meta->model)->toBe('gpt-image-1')
+        ->and($restored->raw)->toBeNull();
+});
+
+test('serialization preserves reranking data and drops the raw response', function (): void {
+    $response = (new RerankingResponse(
+        [new RankedDocument(1, 'Laravel is a PHP framework', 0.95), new RankedDocument(0, 'React is a JS library', 0.12)],
+        new RerankingUsage(320, 2.0),
+        new Meta('cohere', 'rerank-v3.5'),
+    ))->withRawResponse(new Response(new Psr7Response(200, [], '{}')));
+
+    $restored = unserialize(serialize($response));
+
+    expect($restored)->toBeInstanceOf(RerankingResponse::class)
+        ->and($restored->results)->toEqual($response->results)
+        ->and($restored->usage)->toEqual(new RerankingUsage(320, 2.0))
+        ->and($restored->meta)->toEqual(new Meta('cohere', 'rerank-v3.5'))
         ->and($restored->raw)->toBeNull();
 });

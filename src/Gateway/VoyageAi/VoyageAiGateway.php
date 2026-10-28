@@ -69,7 +69,7 @@ class VoyageAiGateway implements EmbeddingGateway, RerankingGateway
         int $timeout = 30,
         array $providerOptions = [],
     ): RerankingResponse {
-        $data = $this->withErrorHandling(
+        $response = $this->withErrorHandling(
             $provider->name(),
             fn () => $this->client($provider, $timeout)->post('/rerank', array_merge($providerOptions, array_filter([
                 'model' => $model,
@@ -77,9 +77,11 @@ class VoyageAiGateway implements EmbeddingGateway, RerankingGateway
                 'documents' => $documents,
                 'top_k' => $limit,
             ]))),
-        )->json();
+        );
 
-        return new RerankingResponse(
+        $data = $response->json();
+
+        return (new RerankingResponse(
             collect($data['data'])->map(fn (array $result): RankedDocument => new RankedDocument(
                 index: $result['index'],
                 document: $documents[$result['index']],
@@ -87,6 +89,6 @@ class VoyageAiGateway implements EmbeddingGateway, RerankingGateway
             ))->all(),
             new RerankingUsage($data['usage']['total_tokens'] ?? 0),
             new Meta($provider->name(), $model),
-        );
+        ))->withRawResponse($response);
     }
 }
