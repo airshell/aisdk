@@ -947,6 +947,36 @@ class TextGenerationLoop
     }
 
     /**
+     * Determine whether the history ends in a pause a real run could have left: every pending call is for a tool the agent still has, and at least one of them asks for approval.
+     *
+     * @param  Message[]  $messages
+     * @param  array<Tool|ProviderTool>  $tools
+     */
+    public function pausedForApproval(array $messages, array $tools): bool
+    {
+        [$pendingToolCalls] = $this->pendingToolCalls($messages);
+
+        $pendingTools = $this->toolsForPendingCalls($pendingToolCalls, $tools);
+
+        return ! $pendingTools->containsStrict(null)
+            && $pendingToolCalls->contains(fn (ToolCall $toolCall): bool => $this->approvalForTool($pendingTools[$toolCall->id], $toolCall) instanceof Approval);
+    }
+
+    /**
+     * Find the tool each pending call is for, keyed by the call's id.
+     *
+     * @param  Collection<int, ToolCall>  $pendingToolCalls
+     * @param  array<Tool|ProviderTool>  $tools
+     * @return Collection<string, ?Tool>
+     */
+    protected function toolsForPendingCalls(Collection $pendingToolCalls, array $tools): Collection
+    {
+        return $pendingToolCalls->mapWithKeys(fn (ToolCall $toolCall): array => [
+            $toolCall->id => $this->findTool($toolCall->name, $tools),
+        ]);
+    }
+
+    /**
      * Validate the approval's decisions against the pending tool calls, throwing on any mismatch.
      *
      * @param  array<string, Decision>  $approval
@@ -964,9 +994,7 @@ class TextGenerationLoop
             fn ($id) => $id === '*',
         );
 
-        $resolvedTools = $pendingToolCalls->mapWithKeys(fn (ToolCall $toolCall) => [
-            $toolCall->id => $this->findTool($toolCall->name, $tools),
-        ]);
+        $resolvedTools = $this->toolsForPendingCalls($pendingToolCalls, $tools);
 
         $approvals = $pendingToolCalls->mapWithKeys(fn (ToolCall $toolCall) => [
             $toolCall->id => $this->approvalForTool($resolvedTools[$toolCall->id], $toolCall),
