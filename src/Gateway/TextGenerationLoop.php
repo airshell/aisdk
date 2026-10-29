@@ -24,6 +24,7 @@ use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Exceptions\ApprovalMismatchException;
 use Laravel\Ai\Exceptions\NoSuchToolException;
 use Laravel\Ai\Exceptions\StreamErrorException;
+use Laravel\Ai\Exceptions\ToolExecutionException;
 use Laravel\Ai\Gateway\Concerns\HandlesToolApprovals;
 use Laravel\Ai\Gateway\Concerns\InvokesTools;
 use Laravel\Ai\Messages\AssistantMessage;
@@ -767,15 +768,25 @@ class TextGenerationLoop
      */
     protected function resolvedToolResult(ToolCall $toolCall, ?Tool $tool, bool $isFinalStep, array $tools = [], ?RunContext $context = null): ToolResult
     {
-        return $this->recordedToolResult($this->toolResult(
-            $toolCall,
-            match (true) {
-                ! $tool instanceof Tool && $this->repairsToolCalls => "Tool '{$toolCall->name}' does not exist. Available tools: {$this->availableToolNames($tools)}.",
-                $isFinalStep => 'The agent reached its maximum number of steps without running this tool call.',
-                default => $this->executeTool($tool, $toolCall->arguments, $toolCall->id, $context),
-            },
-            failed: ! $tool instanceof Tool || $isFinalStep,
-        ), $context);
+        return $this->recordedToolResult(match (true) {
+            ! $tool instanceof Tool && $this->repairsToolCalls => $this->toolResult($toolCall, "Tool '{$toolCall->name}' does not exist. Available tools: {$this->availableToolNames($tools)}.", failed: true),
+            $isFinalStep => $this->toolResult($toolCall, 'The agent reached its maximum number of steps without running this tool call.', failed: true),
+            default => $this->executedToolResult($toolCall, $tool, $context),
+        }, $context);
+    }
+
+    /**
+     * Execute the tool for the given call, returning a failure to the model instead of ending the run.
+     */
+    protected function executedToolResult(ToolCall $toolCall, Tool $tool, ?RunContext $context = null): ToolResult
+    {
+        try {
+            return $this->toolResult($toolCall, $this->executeTool($tool, $toolCall->arguments, $toolCall->id, $context));
+        } catch (ToolExecutionException $exception) {
+            report($exception->exception);
+
+            return $this->toolResult($toolCall, 'The tool call failed: '.$exception->exception->getMessage(), failed: true);
+        }
     }
 
     /**
