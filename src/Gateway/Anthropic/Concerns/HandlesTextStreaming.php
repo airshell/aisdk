@@ -4,6 +4,8 @@ namespace Laravel\Ai\Gateway\Anthropic\Concerns;
 
 use Generator;
 use Illuminate\Support\Str;
+use Laravel\Ai\Messages\AssistantMessage;
+use Laravel\Ai\Messages\Message;
 use Laravel\Ai\Providers\Provider;
 use Laravel\Ai\Responses\Data\TextUsage;
 use Laravel\Ai\Responses\Data\ToolCall;
@@ -24,13 +26,32 @@ use Laravel\Ai\Streaming\Events\ToolCall as ToolCallEvent;
 trait HandlesTextStreaming
 {
     /**
+     * Get the content of the paused steps the turn being continued is made of.
+     *
+     * @param  array<int, Message>  $messages
+     * @return array<int, array<string, mixed>>
+     */
+    protected function pausedContent(array $messages): array
+    {
+        return collect($messages)
+            ->reverse()
+            ->takeWhile(fn (Message $message) => $message instanceof AssistantMessage)
+            ->reverse()
+            ->flatMap(fn (AssistantMessage $message) => $message->replayBlocks)
+            ->all();
+    }
+
+    /**
      * Process a single Anthropic streaming turn and yield Laravel stream events.
+     *
+     * @param  array<int, array<string, mixed>>  $pausedContent
      */
     protected function processTextStream(
         string $invocationId,
         Provider $provider,
         string $model,
         $streamBody,
+        array $pausedContent = [],
     ): Generator {
         $messageId = $this->generateEventId();
         $reasoningId = '';
@@ -49,6 +70,18 @@ trait HandlesTextStreaming
         $responseContent = [];
         $afterTool = false;
         $lastTextDelta = '';
+
+        // A turn resumed after pause_turn picks up where the paused content ended...
+        foreach ($pausedContent as $block) {
+            $blockType = $block['type'] ?? '';
+
+            if ($blockType === 'text' && ($block['text'] ?? '') !== '') {
+                $lastTextDelta = (string) $block['text'];
+                $afterTool = false;
+            } elseif ($this->isToolBlock($blockType)) {
+                $afterTool = true;
+            }
+        }
 
         $messageUsage = [];
         $usage = null;
